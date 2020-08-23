@@ -1,0 +1,39 @@
+library(shiny)
+library(tidyverse)
+library(Matrix)
+library(recommenderlab)
+library(shinyWidgets)
+
+
+# ui.R
+item_list <- readRDS("item_list.rds")
+
+# reading the dataset
+dataset <-  read.csv("location_of_your_dataset")
+
+ui <- fluidPage(
+  
+  # App title ----
+  headerPanel("Product Recommender"),
+  
+  fluidRow(setBackgroundColor(color = "ghostwhite"),
+    
+    # Input selection
+    column(6, 
+           # INPUT
+           h3("Select Items you want to purchase"),    
+           wellPanel(
+             selectInput("input_item1", "Item #1", choices = c("", item_list)),
+             selectInput("input_item2", "Item #2", choices = c("", item_list)),
+             selectInput("input_item3", "Item #3", choices = c("", item_list))
+           )
+    ),
+    
+    # Output table
+    column(6,
+           h3("Other Items you Might Be Interested in"),     
+           tableOutput("item_recom")
+    )
+    
+  )
+)
