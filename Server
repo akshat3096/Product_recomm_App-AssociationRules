@@ -1,0 +1,64 @@
+# server.R
+
+server <- function(input,output) {
+  
+  output$item_recom <- renderTable({
+    
+    customer_order <- c(input$input_item1, input$input_item2, input$input_item3)
+    
+    
+    # Removing duplicates 
+    dataset <- dataset %>%  # create unique identifier
+      mutate(InNo_Desc = paste(Invoice_Number, Product_Name, sep = ' ')) # filter out duplicates 
+    
+    dataset <- dataset[!duplicated(dataset$InNo_Desc), ] %>% 
+      select(-InNo_Desc) # drop unique identifier
+    
+    # Create the rating matrix 
+    ratings_matrix <- dataset %>%# Select only needed variables
+      select(Invoice_Number, Product_Name) %>% # Add a column of 1s
+      mutate(value = 1) %>%# Spread into user-item format
+      spread(Product_Name, value, fill = 0) %>%
+      select(-Invoice_Number) %>%# Convert to matrix
+      as.matrix() %>%# Convert to recommenderlab class 'binaryRatingsMatrix'
+      as("binaryRatingMatrix")
+    
+    # Create evaluation scheme
+    scheme <- ratings_matrix %>% 
+      evaluationScheme(method = "cross",
+                       k      = 5, 
+                       train  = 0.6,
+                       given  = -1)
+    
+    # Set up List of Algorithms
+    algorithms <- list(
+      "association rules" = list(name  = "AR", param = list(supp = 0.01, conf = 0.50)))
+    
+    
+    # create a `Recommender`
+    recomm <- Recommender(getData(scheme, 'train'), 
+                          method = "AR",   
+                          param = list(supp = 0.01, conf = 0.50))
+    
+    # put string in a format that recommenderlab accepts.
+    new_order_rat_matrx <- dataset %>% 
+      select(Product_Name) %>% # Select item descriptions from dataset dataset
+      unique() %>% 
+      mutate(value = as.numeric(Product_Name %in% customer_order)) %>% # Add a 'value' column
+      spread(key = Product_Name, value = value) %>% # Spread into sparse matrix format
+      as.matrix() %>% # Change to a matrix
+      as("binaryRatingMatrix")
+    
+    pred <- predict(recomm, 
+                    newdata = new_order_rat_matrx)
+    
+    # Put recommended products into a dataframe
+    item_recom <- as(pred, 'list')%>% 
+      data.frame() %>% 
+      rename("Product Name"="X1")
+    
+    
+  })
+}
+
+shinyApp(ui = ui, server = server)
